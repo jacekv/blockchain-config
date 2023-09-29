@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
+// taken from https://bitbucket.org/rhitchens2/soliditystoragepatterns/src/ec5997449f4d99a2357c3b134f8794a790660a59/GeneralizedCollection.sol?at=master&fileviewer=file-view-default
+// Credit to Rob Hitchens
+
 pragma solidity ^0.8.9;
 
 contract GeneralizedCollection {
