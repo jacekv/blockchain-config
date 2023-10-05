@@ -8,6 +8,7 @@ contract GeneralizedCollection {
 
     struct FieldStruct {
         bytes32 value;
+        string name;
         uint fieldKeyListPointer;
     }
 
@@ -63,7 +64,7 @@ contract GeneralizedCollection {
         return true;
     }
        
-    function _updateRecordField(bytes32 key, uint fieldKey, bytes32 value) internal returns(bool success) {
+    function _updateRecordFieldValue(bytes32 key, uint fieldKey, bytes32 value) internal returns(bool success) {
         if(!isRecord(key)) {
             _insertRecord(key);
         }
@@ -75,9 +76,9 @@ contract GeneralizedCollection {
     }
     
     
-    function getRecordFieldValue(bytes32 key, uint fieldKey) public view returns(bytes32 value) {
+    function getRecordFieldNameAndValue(bytes32 key, uint fieldKey) public view returns(string memory name, bytes32 value) {
         require(isRecordFieldKey(key, fieldKey), 'Field key not active');
-        return recordStructs[key].fieldStructs[fieldKey].value;
+        return (recordStructs[key].fieldStructs[fieldKey].name, recordStructs[key].fieldStructs[fieldKey].value);
     }
     
     function _deleteRecord(bytes32 key) internal returns(bool success) {

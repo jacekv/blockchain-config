@@ -51,7 +51,8 @@ describe("Config", function () {
       paddedOwnerAddress = ethers.zeroPadValue(owner.address, 32);
       expect(await config.getRecordCount()).to.equal(1);
       expect(await config.getRecordFieldKeyCount(key)).to.equal(1);
-      expect(await config.getRecordFieldValue(key, key)).to.equal(paddedOwnerAddress);
+      let value = await config.getRecordFieldNameAndValue(key, key);
+      expect(value[1]).to.equal(paddedOwnerAddress);
 
       await expect(config.createConfigRecord(ethers.zeroPadBytes("0x00", 32))).to.be.revertedWith("Record already exists");
     });
@@ -87,7 +88,8 @@ describe("Config", function () {
         await config.updateConfigValue(ONE_KEY, FIELD_KEY_ONE, VALUE);
         expect(await config.getRecordCount()).to.equal(2);
         expect(await config.isRecordFieldKey(ONE_KEY, FIELD_KEY_ONE)).to.be.true;
-        expect(await config.getRecordFieldValue(ONE_KEY, FIELD_KEY_ONE)).to.equal(VALUE);
+        let value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE);
+        expect(value[1]).to.equal(VALUE);
     });
 
     it("Shouldn't be able to create a new field as non-owner", async function () {
@@ -99,9 +101,11 @@ describe("Config", function () {
     it("Update an already existing value in a record", async function () {
         const { config } = await loadFixture(addValueToRecord);
 
-        expect(await config.getRecordFieldValue(ONE_KEY, FIELD_KEY_ONE)).to.equal(VALUE);
+        let value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE);
+        expect(value[1]).to.equal(VALUE);
         await config.updateConfigValue(ONE_KEY, FIELD_KEY_ONE, VALUE_TWO);
-        expect(await config.getRecordFieldValue(ONE_KEY, FIELD_KEY_ONE)).to.equal(VALUE_TWO);
+        value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE); 
+        expect(value[1]).to.equal(VALUE_TWO);
     });
   });
 
@@ -122,7 +126,8 @@ describe("Config", function () {
         const { config, _, otherAccount } = await loadFixture(addSingleRecord);
 
         await config.changeConfigOwner(ONE_KEY, otherAccount.address);
-        expect(await config.getRecordFieldValue(ONE_KEY, 0)).to.equal(ethers.zeroPadValue(otherAccount.address, 32));
+        let value = await config.getRecordFieldNameAndValue(ONE_KEY, 0);
+        expect(value[1]).to.equal(ethers.zeroPadValue(otherAccount.address, 32));
     });
   });
 
@@ -142,18 +147,22 @@ describe("Config", function () {
     it("Should be able to remove a value from a record", async function() {
         const { config } = await loadFixture(addValueToRecord);
 
-        expect(await config.getRecordFieldValue(ONE_KEY, FIELD_KEY_ONE)).to.equal(VALUE);
-        await config.deleteConfigValue(ONE_KEY, FIELD_KEY_ONE);
-        await expect(config.getRecordFieldValue(ONE_KEY, FIELD_KEY_ONE)).to.be.revertedWith("Field key not active");
+        let value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE);
+        expect(value[1]).to.equal(VALUE);
+        await config.deleteConfigValue(ONE_KEY, FIELD_KEY_ONE); 
+        await expect(config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE)).to.be.revertedWith("Field key not active");
     });
 
     it("Should be able to remove middle value from a record with multiple values", async function() {
         const { config } = await loadFixture(addSecondValueToRecord);
 
-        expect(await config.getRecordFieldValue(ONE_KEY, FIELD_KEY_TWO)).to.equal(VALUE_TWO);
+        let value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_TWO);
+        expect(value[1]).to.equal(VALUE_TWO);
         await config.deleteConfigValue(ONE_KEY, FIELD_KEY_ONE);
-        await expect(config.getRecordFieldValue(ONE_KEY, FIELD_KEY_ONE)).to.be.revertedWith("Field key not active");
-        expect(await config.getRecordFieldValue(ONE_KEY, FIELD_KEY_TWO)).to.equal(VALUE_TWO);
+        await expect(config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE)).to.be.revertedWith("Field key not active");
+        
+        value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_TWO); 
+        expect(value[1]).to.equal(VALUE_TWO);
     });
   });
 
@@ -195,7 +204,7 @@ describe("Config", function () {
         const { config } = await loadFixture(deployConfig);
 
         await expect(config.getRecordFieldKeyCount(ONE_KEY)).to.be.revertedWith("Record not active");
-        await expect(config.getRecordFieldValue(ONE_KEY, FIELD_KEY_ONE)).to.be.revertedWith("Field key not active");
+        await expect(config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE)).to.be.revertedWith("Field key not active");
     });
   });
 });

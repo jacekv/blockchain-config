@@ -9,7 +9,7 @@ contract Config is GeneralizedCollection {
     modifier onlyOwner(bytes32 key) {
         require(isRecord(key), "Record does not exist");
         bytes32 paddedOwner = bytes32(uint256(uint160(msg.sender)));
-        bytes32 owner = getRecordFieldValue(key, 0);
+        (string memory _fieldName, bytes32 owner) = getRecordFieldNameAndValue(key, 0);
         require(owner == paddedOwner, "Sender is not owner");
         _;
     }
@@ -47,10 +47,10 @@ contract Config is GeneralizedCollection {
             _createConfigRecord(key);
         } else {
             bytes32 paddedOwner = bytes32(uint256(uint160(msg.sender)));
-            bytes32 owner = getRecordFieldValue(key, 0);
+            (string memory fieldName, bytes32 owner) = getRecordFieldNameAndValue(key, 0);
             require(owner == paddedOwner, "Sender is not owner");
         }
-        _updateRecordField(key, fieldKey, value);   
+        _updateRecordFieldValue(key, fieldKey, value);   
     }
 
     /**
@@ -60,7 +60,7 @@ contract Config is GeneralizedCollection {
      * @param newOwner - address of the new owner
      */
     function changeConfigOwner(bytes32 key, address newOwner) onlyOwner(key) public {
-        _updateRecordField(key, 0, bytes32(uint256(uint160(newOwner))));
+        _updateRecordFieldValue(key, 0, bytes32(uint256(uint160(newOwner))));
     }
 
     /**
@@ -84,7 +84,7 @@ contract Config is GeneralizedCollection {
 
     function _createConfigRecord(bytes32 key) internal {
         _insertRecord(key);
-        _updateRecordField(key, 0, bytes32(uint256(uint160(msg.sender))));
+        _updateRecordFieldValue(key, 0, bytes32(uint256(uint160(msg.sender))));
         emit ConfigRecordCreated(key, msg.sender);
     }
 }
