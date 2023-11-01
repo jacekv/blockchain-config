@@ -6,6 +6,9 @@ describe("Config", function () {
   TWO_KEY = ethers.zeroPadValue("0x02", 32);
   FIELD_KEY_ONE = 1;
   FIELD_KEY_TWO = 2;
+  EMPTY_CONFIG_NAME = "";
+  CONFIG_NAME = "config_name";
+  UPDATED_CONFIG_NAME = "new_config_name";
   VALUE = ethers.zeroPadValue("0xdeadbeef", 32);
   VALUE_TWO = ethers.zeroPadValue("0xbeefdead", 32);
 
@@ -33,13 +36,13 @@ describe("Config", function () {
 
   async function addValueToRecord() {
     const { config, owner, otherAccount } = await loadFixture(addSingleRecord);
-    await config.updateConfigValue(ONE_KEY, FIELD_KEY_ONE, VALUE);
+    await config.updateConfigValue(ONE_KEY, FIELD_KEY_ONE, CONFIG_NAME, VALUE);
     return { config, owner, otherAccount };
   }
 
   async function addSecondValueToRecord() {
     const { config, owner, otherAccount } = await loadFixture(addValueToRecord);
-    await config.updateConfigValue(ONE_KEY, FIELD_KEY_TWO, VALUE_TWO);
+    await config.updateConfigValue(ONE_KEY, FIELD_KEY_TWO, CONFIG_NAME, VALUE_TWO);
     return { config, owner, otherAccount };
   }
 
@@ -52,6 +55,7 @@ describe("Config", function () {
       expect(await config.getRecordCount()).to.equal(1);
       expect(await config.getRecordFieldKeyCount(key)).to.equal(1);
       let value = await config.getRecordFieldNameAndValue(key, key);
+      expect(value[0]).to.equal("owner");
       expect(value[1]).to.equal(paddedOwnerAddress);
 
       await expect(config.createConfigRecord(ethers.zeroPadBytes("0x00", 32))).to.be.revertedWith("Record already exists");
@@ -73,38 +77,41 @@ describe("Config", function () {
   });
 
   describe("Testing the creation of a new field and updating", function () {
-    it("Shouldn't be able to create a new field for a non-existent record with field key 0", async function () {
+    it("Shouldn't be able to create a new record using the update function", async function () {
         const { config } = await loadFixture(deployConfig);
 
         fieldKey = 0;
 
-        await expect(config.updateConfigValue(ONE_KEY, fieldKey, VALUE)).to.be.revertedWith("Field key cannot be 0");
-    });
-
-    it("Should be able to create a new field for a non-existent record", async function () {
-        const { config } = await loadFixture(deployConfig);
-
-        expect(await config.getRecordCount()).to.equal(1);
-        await config.updateConfigValue(ONE_KEY, FIELD_KEY_ONE, VALUE);
-        expect(await config.getRecordCount()).to.equal(2);
-        expect(await config.isRecordFieldKey(ONE_KEY, FIELD_KEY_ONE)).to.be.true;
-        let value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE);
-        expect(value[1]).to.equal(VALUE);
+        await expect(config.updateConfigValue(ONE_KEY, fieldKey, EMPTY_CONFIG_NAME, VALUE)).to.be.revertedWith("Record does not exist");
     });
 
     it("Shouldn't be able to create a new field as non-owner", async function () {
         const { config, _, otherAccount } = await loadFixture(addSingleRecord);
 
-        await expect(config.connect(otherAccount).updateConfigValue(ONE_KEY, FIELD_KEY_ONE, VALUE)).to.be.rejectedWith("Sender is not owner");
+        await expect(config.connect(otherAccount).updateConfigValue(ONE_KEY, FIELD_KEY_ONE, EMPTY_CONFIG_NAME, VALUE)).to.be.rejectedWith("Sender is not owner");
     });
 
-    it("Update an already existing value in a record", async function () {
+    it("Update an already existing value in a record without updating the name", async function () {
         const { config } = await loadFixture(addValueToRecord);
 
         let value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE);
+        expect(value[0]).to.equal(CONFIG_NAME);
         expect(value[1]).to.equal(VALUE);
-        await config.updateConfigValue(ONE_KEY, FIELD_KEY_ONE, VALUE_TWO);
+        await config.updateConfigValue(ONE_KEY, FIELD_KEY_ONE, EMPTY_CONFIG_NAME, VALUE_TWO);
         value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE); 
+        expect(value[0]).to.equal(CONFIG_NAME);
+        expect(value[1]).to.equal(VALUE_TWO);
+    });
+
+    it("Update an already existing value in a record with updating the name", async function () {
+        const { config } = await loadFixture(addValueToRecord);
+
+        let value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE);
+        expect(value[0]).to.equal(CONFIG_NAME);
+        expect(value[1]).to.equal(VALUE);
+        await config.updateConfigValue(ONE_KEY, FIELD_KEY_ONE, UPDATED_CONFIG_NAME, VALUE_TWO);
+        value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE); 
+        expect(value[0]).to.equal(UPDATED_CONFIG_NAME);
         expect(value[1]).to.equal(VALUE_TWO);
     });
   });
@@ -128,6 +135,35 @@ describe("Config", function () {
         await config.changeConfigOwner(ONE_KEY, otherAccount.address);
         let value = await config.getRecordFieldNameAndValue(ONE_KEY, 0);
         expect(value[1]).to.equal(ethers.zeroPadValue(otherAccount.address, 32));
+    });
+  });
+
+  describe("Testing updating the name of a field in the record", function() {
+    it("Shouldn't be able to change name of non-existent record", async function () {
+      const { config } = await loadFixture(deployConfig);
+
+      await expect(config.updateConfigName(ONE_KEY, FIELD_KEY_ONE, UPDATED_CONFIG_NAME)).to.be.revertedWith("Record does not exist");
+    });
+
+    it("Shouldn't be able to change name of record which is owned by someone else", async function () {
+      const { config, otherAccount } = await loadFixture(addSingleRecord);
+
+      await expect(config.connect(otherAccount).updateConfigName(ONE_KEY, FIELD_KEY_ONE, UPDATED_CONFIG_NAME)).to.be.revertedWith("Sender is not owner");
+    });
+
+    it("Shouldn't be able to change name of field key 0", async function () {
+      const { config } = await loadFixture(addSingleRecord);
+
+      await expect(config.updateConfigName(ONE_KEY, 0, UPDATED_CONFIG_NAME)).to.be.revertedWith("Field key cannot be 0");
+    });
+
+    it("Update name of field in record", async function () {
+      const { config } = await loadFixture(addValueToRecord);
+
+      await config.updateConfigName(ONE_KEY, FIELD_KEY_ONE, UPDATED_CONFIG_NAME);
+      let value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE);
+      expect(value[0]).to.equal(UPDATED_CONFIG_NAME);
+      expect(value[1]).to.equal(VALUE);
     });
   });
 

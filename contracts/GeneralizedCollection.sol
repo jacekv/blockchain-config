@@ -75,6 +75,16 @@ contract GeneralizedCollection {
         return true;
     }
     
+    function _updateRecordFieldName(bytes32 key, uint fieldKey, string memory name) internal returns(bool success) {
+        if(!isRecord(key)) {
+            _insertRecord(key);
+        }
+        if(!isRecordFieldKey(key, fieldKey)){
+            _insertRecordField(key, fieldKey);
+        }
+        recordStructs[key].fieldStructs[fieldKey].name = name;
+        return true;
+    }
     
     function getRecordFieldNameAndValue(bytes32 key, uint fieldKey) public view returns(string memory name, bytes32 value) {
         require(isRecordFieldKey(key, fieldKey), 'Field key not active');
