@@ -16,6 +16,7 @@ contract GeneralizedCollection {
         mapping(uint => FieldStruct) fieldStructs;
         uint[] fieldKeyList;
         uint recordListPointer;
+        string name;
     }
 
     mapping(bytes32 => RecordStruct) private recordStructs;
@@ -28,6 +29,11 @@ contract GeneralizedCollection {
     function getRecordFieldKeyCount(bytes32 key) public view returns(uint) {
         require(isRecord(key), 'Record not active');
         return(recordStructs[key].fieldKeyList.length);
+    }
+
+    function getRecordName(bytes32 key) public view returns (string memory) {
+        require(isRecord(key), 'Record not active');
+        return recordStructs[key].name;
     }
 
     function isRecord(bytes32 key) public view returns(bool) {
@@ -49,10 +55,11 @@ contract GeneralizedCollection {
         return false;
     }
 
-    function _insertRecord(bytes32 key) internal returns(bool) {
+    function _insertRecord(bytes32 key, string memory name) internal returns(bool) {
         require(!isRecord(key), 'Key already active');
         recordList.push(key);
         recordStructs[key].recordListPointer = recordList.length - 1;
+        recordStructs[key].name = name;
         return true;
     }
 
@@ -63,11 +70,14 @@ contract GeneralizedCollection {
         recordStructs[key].fieldStructs[fieldKey].fieldKeyListPointer = recordStructs[key].fieldKeyList.length - 1;
         return true;
     }
+
+    function _updateRecordName(bytes32 key, string memory name) internal returns (bool) {
+        require(isRecord(key), 'Key not active');
+        recordStructs[key].name = name;
+        return true;
+    }
        
     function _updateRecordFieldValue(bytes32 key, uint fieldKey, bytes32 value) internal returns(bool success) {
-        if(!isRecord(key)) {
-            _insertRecord(key);
-        }
         if(!isRecordFieldKey(key, fieldKey)){
             _insertRecordField(key, fieldKey);
         }
@@ -76,9 +86,6 @@ contract GeneralizedCollection {
     }
     
     function _updateRecordFieldName(bytes32 key, uint fieldKey, string memory name) internal returns(bool success) {
-        if(!isRecord(key)) {
-            _insertRecord(key);
-        }
         if(!isRecordFieldKey(key, fieldKey)){
             _insertRecordField(key, fieldKey);
         }

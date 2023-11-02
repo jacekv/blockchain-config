@@ -2,8 +2,16 @@
 pragma solidity ^0.8.9;
 
 import "./GeneralizedCollection.sol";
+import "hardhat/console.sol";
 
 contract Config is GeneralizedCollection {
+    struct ConfigRecord {
+        bool active;
+        bytes32 key;
+    }
+
+    mapping(string => ConfigRecord) private nameToRecordStruct;
+
     event ConfigRecordCreated(bytes32 indexed key, address indexed owner);
 
     modifier recordExists(bytes32 key) {
@@ -18,8 +26,8 @@ contract Config is GeneralizedCollection {
         _;
     }
 
-    constructor() {
-        createConfigRecord(0);
+    constructor(string memory name) {
+        createConfigRecord(0, name);
     }
 
     /**
@@ -27,10 +35,21 @@ contract Config is GeneralizedCollection {
      * the record is used to store the owner.
      * 
      * @param key - bytes32 key for the record to be created
+     * @param name - string name for the record to be created
      */
-    function createConfigRecord(bytes32 key) public {
+    function createConfigRecord(bytes32 key, string memory name) public {
         require(isRecord(key) == false, "Record already exists");
-        _createConfigRecord(key);
+        _createConfigRecord(key, name);
+    }
+
+    /**
+     * Updates the name of a config record.
+     * 
+     * @param key - bytes32 key for the record to be updated
+     * @param name - string name for the record to be updated
+     */
+    function updateRecordName(bytes32 key, string memory name) recordExists(key) onlyOwner(key) public {
+        _updateRecordName(key, name);
     }
 
     /**
@@ -93,13 +112,24 @@ contract Config is GeneralizedCollection {
      * @param key - bytes32 key for the record to be deleted
      */
     function deleteConfigRecord(bytes32 key) recordExists(key) onlyOwner(key) public {
+        string memory recordName = getRecordName(key);
         _deleteRecord(key);
+        nameToRecordStruct[recordName].active = false;
     }
 
-    function _createConfigRecord(bytes32 key) internal {
-        _insertRecord(key);
+    function getConfigRecord(string calldata name) public view returns (ConfigRecord memory) {
+        return nameToRecordStruct[name];
+    }
+
+    function _createConfigRecord(bytes32 key, string memory name) internal {
+        console.log(nameToRecordStruct[name].active);
+        console.log(name);
+        require(nameToRecordStruct[name].active == false, "Record with this name already exists");
+        _insertRecord(key, name);
         _updateRecordFieldValue(key, 0, bytes32(uint256(uint160(msg.sender))));
         _updateRecordFieldName(key, 0, "owner");
+        nameToRecordStruct[name].active = true;
+        nameToRecordStruct[name].key = key;
         emit ConfigRecordCreated(key, msg.sender);
     }
 }
