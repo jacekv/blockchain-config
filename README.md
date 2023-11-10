@@ -26,15 +26,15 @@ More information are going to follow :) If you need more, check out the code and
 
 ### Polygon
 
-Address: 0xA69e982Cc0da62e908181Ad212FdC50038C57417
+Address: 0x1c56Cb7323879f7CB89f9fCBA6caf77c7927Aace
 
 ### Fantom
 
-Address: 0xA69e982Cc0da62e908181Ad212FdC50038C57417
+Address: 0x1c56Cb7323879f7CB89f9fCBA6caf77c7927Aace
 
 ### Goerli
 
-Address: 0xA69e982Cc0da62e908181Ad212FdC50038C57417
+Address: 0x1c56Cb7323879f7CB89f9fCBA6caf77c7927Aace
 
 
 # Values
@@ -42,3 +42,11 @@ Address: 0xA69e982Cc0da62e908181Ad212FdC50038C57417
 | Key | Field key | Represents | Type |
 |-----|-----------|------------|------|
 | 0x00000000000000000000000000000000000000000000000000000000000000    |     1      | EIP-1559 | bool |
+
+
+# Deployments
+
+Run
+```bash
+npx hardhat run ./scripts/deploy.js --network <network name>
+```
