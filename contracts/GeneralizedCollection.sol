@@ -6,9 +6,12 @@ pragma solidity ^0.8.9;
 
 contract GeneralizedCollection {
 
+    enum DataTypes { BOOL, UINT, INT, ADDRESS, BYTES32, STRING }
+
     struct FieldStruct {
         bytes32 value;
         string name;
+        DataTypes dataType;
         uint fieldKeyListPointer;
     }
 
@@ -77,11 +80,12 @@ contract GeneralizedCollection {
         return true;
     }
        
-    function _updateRecordFieldValue(bytes32 key, uint fieldKey, bytes32 value) internal returns(bool success) {
+    function _updateRecordFieldValue(bytes32 key, uint fieldKey, bytes32 value, DataTypes dataType) internal returns(bool success) {
         if(!isRecordFieldKey(key, fieldKey)){
             _insertRecordField(key, fieldKey);
         }
         recordStructs[key].fieldStructs[fieldKey].value = value;
+        recordStructs[key].fieldStructs[fieldKey].dataType = dataType;
         return true;
     }
     
@@ -93,9 +97,9 @@ contract GeneralizedCollection {
         return true;
     }
     
-    function getRecordFieldNameAndValue(bytes32 key, uint fieldKey) public view returns(string memory name, bytes32 value) {
+    function getRecordFieldNameAndValue(bytes32 key, uint fieldKey) public view returns(string memory name, bytes32 value, DataTypes dataType) {
         require(isRecordFieldKey(key, fieldKey), 'Field key not active');
-        return (recordStructs[key].fieldStructs[fieldKey].name, recordStructs[key].fieldStructs[fieldKey].value);
+        return (recordStructs[key].fieldStructs[fieldKey].name, recordStructs[key].fieldStructs[fieldKey].value, recordStructs[key].fieldStructs[fieldKey].dataType);
     }
     
     function _deleteRecord(bytes32 key) internal returns(bool success) {

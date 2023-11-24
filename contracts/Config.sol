@@ -21,7 +21,7 @@ contract Config is GeneralizedCollection {
 
     modifier onlyOwner(bytes32 key) {
         bytes32 paddedOwner = bytes32(uint256(uint160(msg.sender)));
-        (string memory _fieldName, bytes32 owner) = getRecordFieldNameAndValue(key, 0);
+        (string memory _fieldName, bytes32 owner, DataTypes _dataType) = getRecordFieldNameAndValue(key, 0);
         require(owner == paddedOwner, "Sender is not owner");
         _;
     }
@@ -64,12 +64,52 @@ contract Config is GeneralizedCollection {
      * this slot is already filled with the address of the owner.
      * @param name - string name for the field. If empty, updating the name is skipped
      * @param value - bytes32 value to be updated
+     * @param dataType - DataTypes enum value for the type of the value
      */
-    function updateConfigValue(bytes32 key, uint fieldKey, string calldata name, bytes32 value) recordExists(key) onlyOwner(key) public {
+    function updateConfigValue(bytes32 key, uint fieldKey, string calldata name, bytes32 value, DataTypes dataType) recordExists(key) onlyOwner(key) public {
         require(fieldKey != 0, "Field key cannot be 0");
-        _updateRecordFieldValue(key, fieldKey, value);
+        _updateRecordFieldValue(key, fieldKey, value, dataType);
         if (bytes(name).length > 0) {
             _updateRecordFieldName(key, fieldKey, name);
+        }
+    }
+
+    /**
+     * Updates a value in a config record. If the record does not exist, it
+     * won't be created.
+     * The function can also be used to add a new value to a record.
+     * Since the record does have a static size, the fieldKey is used to
+     * determine the position of the value.
+     * 
+     * @param key - bytes32 key for the record to be updated
+     * @param fieldKey - uint key for the field to be updated. Can't be 0, since
+     * this slot is already filled with the address of the owner.
+     * @param name - string name for the field. If empty, updating the name is skipped
+     * @param value - bytes32 value to be updated
+     */
+    function updateConfigString(bytes32 key, uint fieldKey, string calldata name, string memory value) recordExists(key) onlyOwner(key) public {
+        require(fieldKey != 0, "Field key cannot be 0");
+
+        if (bytes(name).length > 0) {
+            _updateRecordFieldName(key, fieldKey, name);
+        }
+
+        bytes memory valueBytes = bytes(value);
+        // bytes memory value = bytes(test);
+        uint bytes32Length = valueBytes.length / 32;
+        // in case our data is excatly 32 bytes long, we do not want to
+        // extract another round of data
+        if (bytes32Length * 32 == valueBytes.length) {
+            bytes32Length -= 1;
+        }
+
+        bytes32 extracted_value;
+        for(uint i = 0; i <= bytes32Length; i++) {
+            assembly {
+                extracted_value := mload(add(value, mul(32,add(i, 1))))
+            }
+            _updateRecordFieldValue(key, fieldKey, extracted_value, DataTypes.STRING);
+            fieldKey += 1;
         }
     }
 
@@ -93,7 +133,7 @@ contract Config is GeneralizedCollection {
      * @param newOwner - address of the new owner
      */
     function changeConfigOwner(bytes32 key, address newOwner) recordExists(key) onlyOwner(key) public {
-        _updateRecordFieldValue(key, 0, bytes32(uint256(uint160(newOwner))));
+        _updateRecordFieldValue(key, 0, bytes32(uint256(uint160(newOwner))), DataTypes.ADDRESS);
     }
 
     /**
@@ -122,11 +162,9 @@ contract Config is GeneralizedCollection {
     }
 
     function _createConfigRecord(bytes32 key, string memory name) internal {
-        console.log(nameToRecordStruct[name].active);
-        console.log(name);
         require(nameToRecordStruct[name].active == false, "Record with this name already exists");
         _insertRecord(key, name);
-        _updateRecordFieldValue(key, 0, bytes32(uint256(uint160(msg.sender))));
+        _updateRecordFieldValue(key, 0, bytes32(uint256(uint160(msg.sender))), DataTypes.ADDRESS);
         _updateRecordFieldName(key, 0, "owner");
         nameToRecordStruct[name].active = true;
         nameToRecordStruct[name].key = key;

@@ -14,7 +14,15 @@ describe("Config", function () {
   SECOND_RECORD_NAME = "second_record_name";
   UPDATED_RECORD_NAME = "new_record_name";
   VALUE = ethers.zeroPadValue("0xdeadbeef", 32);
+  VALUE_STRING = "DEAD_BEEF";
+  VALUE_STRING_ENCODED = "0x444541445f424545460000000000000000000000000000000000000000000000";
   VALUE_TWO = ethers.zeroPadValue("0xbeefdead", 32);
+  VALUE_TWO_STRING = "BEEF_DEAD";
+  VALUE_TWO_STRING_ENCODED = "0x424545465f444541440000000000000000000000000000000000000000000000";
+  LONG_STRING_VALUE = "I am a long string value. I should take more that 32 bytes.";
+  LONG_STRING_VALUE_PART_ONE = "0x4920616d2061206c6f6e6720737472696e672076616c75652e20492073686f75";
+  LONG_STRING_VALUE_PART_TWO = "0x6c642074616b65206d6f726520746861742033322062797465732e0000000000";
+  VALUE_DATA_TYPE = 4;
 
   async function deployConfig() {
 
@@ -40,13 +48,19 @@ describe("Config", function () {
 
   async function addValueToRecord() {
     const { config, owner, otherAccount } = await loadFixture(addSingleRecord);
-    await config.updateConfigValue(ONE_KEY, FIELD_KEY_ONE, CONFIG_NAME, VALUE);
+    await config.updateConfigValue(ONE_KEY, FIELD_KEY_ONE, CONFIG_NAME, VALUE, VALUE_DATA_TYPE);
+    return { config, owner, otherAccount };
+  }
+
+  async function addStringToRecord() {
+    const { config, owner, otherAccount } = await loadFixture(addSingleRecord);
+    await config.updateConfigString(ONE_KEY, FIELD_KEY_ONE, CONFIG_NAME, VALUE_STRING);
     return { config, owner, otherAccount };
   }
 
   async function addSecondValueToRecord() {
     const { config, owner, otherAccount } = await loadFixture(addValueToRecord);
-    await config.updateConfigValue(ONE_KEY, FIELD_KEY_TWO, CONFIG_NAME, VALUE_TWO);
+    await config.updateConfigValue(ONE_KEY, FIELD_KEY_TWO, CONFIG_NAME, VALUE_TWO, VALUE_DATA_TYPE);
     return { config, owner, otherAccount };
   }
 
@@ -114,13 +128,15 @@ describe("Config", function () {
 
         fieldKey = 0;
 
-        await expect(config.updateConfigValue(ONE_KEY, fieldKey, EMPTY_CONFIG_NAME, VALUE)).to.be.revertedWith("Record does not exist");
+        await expect(config.updateConfigValue(ONE_KEY, fieldKey, EMPTY_CONFIG_NAME, VALUE, VALUE_DATA_TYPE)).to.be.revertedWith("Record does not exist");
+        await expect(config.updateConfigString(ONE_KEY, fieldKey, EMPTY_CONFIG_NAME, VALUE_STRING)).to.be.revertedWith("Record does not exist");
     });
 
     it("Shouldn't be able to create a new field as non-owner", async function () {
         const { config, _, otherAccount } = await loadFixture(addSingleRecord);
 
-        await expect(config.connect(otherAccount).updateConfigValue(ONE_KEY, FIELD_KEY_ONE, EMPTY_CONFIG_NAME, VALUE)).to.be.rejectedWith("Sender is not owner");
+        await expect(config.connect(otherAccount).updateConfigValue(ONE_KEY, FIELD_KEY_ONE, EMPTY_CONFIG_NAME, VALUE, VALUE_DATA_TYPE)).to.be.rejectedWith("Sender is not owner");
+        await expect(config.connect(otherAccount).updateConfigString(ONE_KEY, FIELD_KEY_ONE, EMPTY_CONFIG_NAME, VALUE_STRING)).to.be.rejectedWith("Sender is not owner");
     });
 
     it("Update an already existing value in a record without updating the name", async function () {
@@ -129,10 +145,22 @@ describe("Config", function () {
         let value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE);
         expect(value[0]).to.equal(CONFIG_NAME);
         expect(value[1]).to.equal(VALUE);
-        await config.updateConfigValue(ONE_KEY, FIELD_KEY_ONE, EMPTY_CONFIG_NAME, VALUE_TWO);
+        await config.updateConfigValue(ONE_KEY, FIELD_KEY_ONE, EMPTY_CONFIG_NAME, VALUE_TWO, VALUE_DATA_TYPE);
         value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE); 
         expect(value[0]).to.equal(CONFIG_NAME);
         expect(value[1]).to.equal(VALUE_TWO);
+    });
+
+    it("Update an already existing string value in a record without updating the name", async function () {
+        const { config } = await loadFixture(addStringToRecord);
+
+        let value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE);
+        expect(value[0]).to.equal(CONFIG_NAME);
+        expect(value[1]).to.equal(VALUE_STRING_ENCODED);
+        await config.updateConfigString(ONE_KEY, FIELD_KEY_ONE, EMPTY_CONFIG_NAME, VALUE_TWO_STRING);
+        value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE); 
+        expect(value[0]).to.equal(CONFIG_NAME);
+        expect(value[1]).to.equal(VALUE_TWO_STRING_ENCODED);
     });
 
     it("Update an already existing value in a record with updating the name", async function () {
@@ -141,10 +169,37 @@ describe("Config", function () {
         let value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE);
         expect(value[0]).to.equal(CONFIG_NAME);
         expect(value[1]).to.equal(VALUE);
-        await config.updateConfigValue(ONE_KEY, FIELD_KEY_ONE, UPDATED_CONFIG_NAME, VALUE_TWO);
+        await config.updateConfigValue(ONE_KEY, FIELD_KEY_ONE, UPDATED_CONFIG_NAME, VALUE_TWO, VALUE_DATA_TYPE);
         value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE); 
         expect(value[0]).to.equal(UPDATED_CONFIG_NAME);
         expect(value[1]).to.equal(VALUE_TWO);
+    });
+
+    it("Update an already existing string value in a record with updating the name", async function () {
+        const { config } = await loadFixture(addStringToRecord);
+
+        let value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE);
+        expect(value[0]).to.equal(CONFIG_NAME);
+        expect(value[1]).to.equal(VALUE_STRING_ENCODED);
+        await config.updateConfigString(ONE_KEY, FIELD_KEY_ONE, UPDATED_CONFIG_NAME, VALUE_TWO_STRING);
+        value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE); 
+        expect(value[0]).to.equal(UPDATED_CONFIG_NAME);
+        expect(value[1]).to.equal(VALUE_TWO_STRING_ENCODED);
+    });
+    
+    it("Update an already existing string value with a string length > 32 bytes", async function () {
+        const { config } = await loadFixture(addStringToRecord);
+
+        let value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE);
+        expect(value[0]).to.equal(CONFIG_NAME);
+        expect(value[1]).to.equal(VALUE_STRING_ENCODED);
+        await config.updateConfigString(ONE_KEY, FIELD_KEY_ONE, EMPTY_CONFIG_NAME, LONG_STRING_VALUE);
+        value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_ONE); 
+        expect(value[0]).to.equal(CONFIG_NAME);
+        expect(value[1]).to.equal(LONG_STRING_VALUE_PART_ONE);
+        value = await config.getRecordFieldNameAndValue(ONE_KEY, FIELD_KEY_TWO); 
+        expect(value[0]).to.equal('');
+        expect(value[1]).to.equal(LONG_STRING_VALUE_PART_TWO);
     });
   });
 
